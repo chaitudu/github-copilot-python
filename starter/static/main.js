@@ -15,13 +15,14 @@ function createBoardElement() {
       input.className = 'sudoku-cell';
       input.dataset.row = i;
       input.dataset.col = j;
-      // Allow only digits 1-9 and validate immediately when user types
+
+      // Sanitize input and validate on each change
       input.addEventListener('input', (e) => {
-        const val = e.target.value.replace(/[^1-9]/g, '');
-        e.target.value = val;
-        // Validate this cell against current board state
-        validateCell(parseInt(e.target.dataset.row, 10), parseInt(e.target.dataset.col, 10));
+        const clean = e.target.value.replace(/[^1-9]/g, '');
+        e.target.value = clean;
+        validateCell(Number(e.target.dataset.row), Number(e.target.dataset.col));
       });
+
       rowDiv.appendChild(input);
     }
     boardDiv.appendChild(rowDiv);
@@ -29,57 +30,66 @@ function createBoardElement() {
 }
 
 function getInput(row, col) {
-  const boardDiv = document.getElementById('sudoku-board');
-  return boardDiv.querySelector(`input[data-row="${row}"][data-col="${col}"]`);
+  return document.querySelector(`#sudoku-board input[data-row="${row}"][data-col="${col}"]`);
 }
 
 function getCellValue(row, col) {
   const inp = getInput(row, col);
   if (!inp) return 0;
   const v = inp.value;
-  return v ? parseInt(v, 10) : 0;
+  return v ? Number(v) : 0;
 }
 
+// Validate a cell at (row, col). Adds/removes visual + accessibility markers.
 function validateCell(row, col) {
   const inp = getInput(row, col);
   if (!inp) return;
-  const val = inp.value;
 
-  // Clear invalid state for empty cells
-  if (!val) {
+  // Don't validate prefilled (disabled) cells here
+  if (inp.disabled) {
     inp.classList.remove('incorrect');
     inp.removeAttribute('aria-invalid');
     inp.removeAttribute('title');
     return;
   }
 
-  let invalid = false;
+  const valStr = inp.value;
+  if (!valStr) {
+    // Empty — clear any invalid state
+    inp.classList.remove('incorrect');
+    inp.removeAttribute('aria-invalid');
+    inp.removeAttribute('title');
+    return;
+  }
+
+  const val = Number(valStr);
+  let conflict = false;
   let message = '';
 
-  // Row check
+  // Row
   for (let c = 0; c < SIZE; c++) {
     if (c === col) continue;
-    if (getCellValue(row, c) === parseInt(val, 10)) {
-      invalid = true;
-      message = `Conflicts with row at column ${c + 1}`;
+    if (getCellValue(row, c) === val) {
+      conflict = true;
+      message = `Conflicts with another cell in the same row (column ${c + 1})`;
       break;
     }
   }
 
-  // Column check
-  if (!invalid) {
+  // Column
+  if (!conflict) {
     for (let r = 0; r < SIZE; r++) {
       if (r === row) continue;
-      if (getCellValue(r, col) === parseInt(val, 10)) {
-        invalid = true;
-        message = `Conflicts with column at row ${r + 1}`;
+      if (getCellValue(r, col) === val) {
+        conflict = true;
+        message = `Conflicts with another cell in the same column (row ${r + 1})`;
         break;
       }
     }
   }
 
-  // 3x3 box check
-  if (!invalid) {
+  // 3x3 box
+  if (!conflict) {
     const startRow = row - (row % 3);
     const startCol = col - (col % 3);
     for (let r = 0; r < 3; r++) {
@@ -87,20 +97,19 @@ function validateCell(row, col) {
         const rr = startRow + r;
         const cc = startCol + c;
         if (rr === row && cc === col) continue;
-        if (getCellValue(rr, cc) === parseInt(val, 10)) {
-          invalid = true;
-          message = `Conflicts with 3x3 block at row ${rr + 1}, col ${cc + 1}`;
+        if (getCellValue(rr, cc) === val) {
+          conflict = true;
+          message = `Conflicts with a cell in the same 3x3 block (row ${rr + 1}, col ${cc + 1})`;
           break;
         }
       }
-      if (invalid) break;
+      if (conflict) break;
     }
   }
 
-  if (invalid) {
+  if (conflict) {
     inp.classList.add('incorrect');
     inp.setAttribute('aria-invalid', 'true');
-    // Provide a textual message via title for assistive tech; not the only signal
     inp.setAttribute('title', message);
   } else {
     inp.classList.remove('incorrect');
@@ -112,8 +121,7 @@ function validateCell(row, col) {
 function renderPuzzle(puz) {
   puzzle = puz;
   createBoardElement();
-  const boardDiv = document.getElementById('sudoku-board');
-  const inputs = boardDiv.getElementsByTagName('input');
+  const inputs = document.querySelectorAll('#sudoku-board input');
   for (let i = 0; i < SIZE; i++) {
     for (let j = 0; j < SIZE; j++) {
       const idx = i * SIZE + j;
@@ -121,13 +129,14 @@ function renderPuzzle(puz) {
       const inp = inputs[idx];
       if (val !== 0) {
         inp.value = val;
-        inp.disabled = true; // lock prefilled cells
-        inp.className += ' prefilled';
+        inp.disabled = true;
+        inp.classList.add('prefilled');
         inp.setAttribute('aria-disabled', 'true');
         inp.setAttribute('title', 'Prefilled cell');
       } else {
         inp.value = '';
         inp.disabled = false;
+        inp.classList.remove('prefilled');
         inp.removeAttribute('aria-disabled');
         inp.removeAttribute('title');
       }
