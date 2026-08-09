@@ -6,6 +6,10 @@ let hintCount = 0;
 let timerInterval = null;
 let elapsedSeconds = 0;
 
+// Scoreboard/localStorage (Milestone 6)
+const STORAGE_KEY = 'sudoku_top_scores_v1';
+let scoreSaved = false; // prevent duplicate saves per completion
+
 function createBoardElement() {
   const boardDiv = document.getElementById('sudoku-board');
   boardDiv.innerHTML = '';
@@ -227,95 +231,26 @@ function updateTimerDisplay() {
   if (el) el.textContent = `Time: ${formatTime(elapsedSeconds)}`;
 }
 
-// Completion check
-function checkCompletion() {
-  if (!solution) return;
-  const inputs = document.querySelectorAll('#sudoku-board input');
-  for (let r = 0; r < SIZE; r++) {
-    for (let c = 0; c < SIZE; c++) {
-      const idx = r * SIZE + c;
-      const inp = inputs[idx];
-      const val = inp.value ? Number(inp.value) : 0;
-      if (val !== solution[r][c]) return;
-    }
-  }
-  const msg = document.getElementById('message');
-  if (msg) {
-    msg.style.color = '#388e3c';
-    msg.innerText = 'Congratulations! You solved it!';
-  }
-  stopTimer();
-}
-
-// Network / flow
-async function newGame() {
-  const res = await fetch('/new');
-  const data = await res.json();
-  puzzle = data.puzzle;
-  solution = data.solution || null;
-  hintCount = 0;
-  updateHintCountDisplay();
-  resetTimer();
-  renderPuzzle(puzzle);
-  startTimer();
-  const msg = document.getElementById('message');
-  if (msg) msg.innerText = '';
-}
-
-async function checkSolution() {
-  const boardDiv = document.getElementById('sudoku-board');
-  const inputs = boardDiv.getElementsByTagName('input');
-  const board = [];
-  for (let i = 0; i < SIZE; i++) {
-    board[i] = [];
-    for (let j = 0; j < SIZE; j++) {
-      const idx = i * SIZE + j;
-      const val = inputs[idx].value;
-      board[i][j] = val ? parseInt(val, 10) : 0;
-    }
-  }
-  const res = await fetch('/check', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({board})
-  });
-  const data = await res.json();
-  const msg = document.getElementById('message');
-  if (data.error) {
-    if (msg) {
-      msg.style.color = '#d32f2f';
-      msg.innerText = data.error;
-    }
-    return;
-  }
-  const incorrect = new Set(data.incorrect.map(x => x[0]*SIZE + x[1]));
-  const inputsArr = Array.from(inputs);
-  for (let idx = 0; idx < inputsArr.length; idx++) {
-    const inp = inputsArr[idx];
-    if (inp.disabled) continue;
-    inp.className = 'sudoku-cell';
-    if (incorrect.has(idx)) inp.className = 'sudoku-cell incorrect';
-  }
-  if (incorrect.size === 0) {
-    if (msg) {
-      msg.style.color = '#388e3c';
-      msg.innerText = 'Congratulations! You solved it!';
-    }
-    stopTimer();
-  } else {
-    if (msg) {
-      msg.style.color = '#d32f2f';
-      msg.innerText = 'Some cells are incorrect.';
-    }
+// Scoreboard / localStorage helpers (Milestone 6 integration)
+function loadScores() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.warn('Scoreboard: invalid data in localStorage, resetting', e);
+    return [];
   }
 }
 
-// Wire buttons
-window.addEventListener('load', () => {
-  document.getElementById('new-game').addEventListener('click', newGame);
-  document.getElementById('check-solution').addEventListener('click', checkSolution);
-  const hintBtn = document.getElementById('hint-button');
-  if (hintBtn) hintBtn.addEventListener('click', applyHint);
-  // initialize
-  newGame();
-});
+function saveScores(scores) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
+  } catch (e) {
+    console.warn('Scoreboard: cannot save scores', e);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>\
