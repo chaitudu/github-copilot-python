@@ -1,6 +1,10 @@
 // Client-side rendering and interaction for the Flask-backed Sudoku
 const SIZE = 9;
 let puzzle = [];
+let solution = null; // server-provided solution for hints
+let hintCount = 0;
+let timerInterval = null;
+let elapsedSeconds = 0;
 
 function createBoardElement() {
   const boardDiv = document.getElementById('sudoku-board');
@@ -21,6 +25,7 @@ function createBoardElement() {
         const clean = e.target.value.replace(/[^1-9]/g, '');
         e.target.value = clean;
         validateCell(Number(e.target.dataset.row), Number(e.target.dataset.col));
+        checkCompletion();
       });
 
       rowDiv.appendChild(input);
@@ -144,11 +149,117 @@ function renderPuzzle(puz) {
   }
 }
 
+// Hint / timer helpers
+function updateHintCountDisplay() {
+  const el = document.getElementById('hint-count');
+  if (el) el.textContent = `Hints: ${hintCount}`;
+}
+
+function findFirstEmptyEditableCell() {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const inp = getInput(r, c);
+      if (inp && !inp.disabled && !inp.value) return {r, c, inp};
+    }
+  }
+  return null;
+}
+
+function applyHint() {
+  if (!solution) return;
+  const target = findFirstEmptyEditableCell();
+  if (!target) {
+    const msg = document.getElementById('message');
+    if (msg) {
+      msg.style.color = '#1976d2';
+      msg.innerText = 'No empty cells to hint.';
+      setTimeout(() => { if (msg) msg.innerText = ''; }, 2000);
+    }
+    return;
+  }
+  const {r, c, inp} = target;
+  const correctValue = solution[r][c];
+  inp.value = correctValue;
+  inp.disabled = true;
+  inp.classList.add('prefilled', 'hinted');
+  inp.setAttribute('aria-disabled', 'true');
+  inp.setAttribute('title', `Hinted cell (value ${correctValue})`);
+  hintCount += 1;
+  updateHintCountDisplay();
+
+  // Re-validate board and check completion
+  for (let rr = 0; rr < SIZE; rr++) {
+    for (let cc = 0; cc < SIZE; cc++) validateCell(rr, cc);
+  }
+  checkCompletion();
+}
+
+// Timer functions
+function resetTimer() {
+  stopTimer();
+  elapsedSeconds = 0;
+  updateTimerDisplay();
+}
+
+function startTimer() {
+  stopTimer();
+  timerInterval = setInterval(() => {
+    elapsedSeconds += 1;
+    updateTimerDisplay();
+  }, 1000);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function formatTime(seconds) {
+  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+  const ss = String(seconds % 60).padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer');
+  if (el) el.textContent = `Time: ${formatTime(elapsedSeconds)}`;
+}
+
+// Completion check
+function checkCompletion() {
+  if (!solution) return;
+  const inputs = document.querySelectorAll('#sudoku-board input');
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const idx = r * SIZE + c;
+      const inp = inputs[idx];
+      const val = inp.value ? Number(inp.value) : 0;
+      if (val !== solution[r][c]) return;
+    }
+  }
+  const msg = document.getElementById('message');
+  if (msg) {
+    msg.style.color = '#388e3c';
+    msg.innerText = 'Congratulations! You solved it!';
+  }
+  stopTimer();
+}
+
+// Network / flow
 async function newGame() {
   const res = await fetch('/new');
   const data = await res.json();
-  renderPuzzle(data.puzzle);
-  document.getElementById('message').innerText = '';
+  puzzle = data.puzzle;
+  solution = data.solution || null;
+  hintCount = 0;
+  updateHintCountDisplay();
+  resetTimer();
+  renderPuzzle(puzzle);
+  startTimer();
+  const msg = document.getElementById('message');
+  if (msg) msg.innerText = '';
 }
 
 async function checkSolution() {
@@ -171,25 +282,31 @@ async function checkSolution() {
   const data = await res.json();
   const msg = document.getElementById('message');
   if (data.error) {
-    msg.style.color = '#d32f2f';
-    msg.innerText = data.error;
+    if (msg) {
+      msg.style.color = '#d32f2f';
+      msg.innerText = data.error;
+    }
     return;
   }
   const incorrect = new Set(data.incorrect.map(x => x[0]*SIZE + x[1]));
-  for (let idx = 0; idx < inputs.length; idx++) {
-    const inp = inputs[idx];
+  const inputsArr = Array.from(inputs);
+  for (let idx = 0; idx < inputsArr.length; idx++) {
+    const inp = inputsArr[idx];
     if (inp.disabled) continue;
     inp.className = 'sudoku-cell';
-    if (incorrect.has(idx)) {
-      inp.className = 'sudoku-cell incorrect';
-    }
+    if (incorrect.has(idx)) inp.className = 'sudoku-cell incorrect';
   }
   if (incorrect.size === 0) {
-    msg.style.color = '#388e3c';
-    msg.innerText = 'Congratulations! You solved it!';
+    if (msg) {
+      msg.style.color = '#388e3c';
+      msg.innerText = 'Congratulations! You solved it!';
+    }
+    stopTimer();
   } else {
-    msg.style.color = '#d32f2f';
-    msg.innerText = 'Some cells are incorrect.';
+    if (msg) {
+      msg.style.color = '#d32f2f';
+      msg.innerText = 'Some cells are incorrect.';
+    }
   }
 }
 
@@ -197,6 +314,8 @@ async function checkSolution() {
 window.addEventListener('load', () => {
   document.getElementById('new-game').addEventListener('click', newGame);
   document.getElementById('check-solution').addEventListener('click', checkSolution);
+  const hintBtn = document.getElementById('hint-button');
+  if (hintBtn) hintBtn.addEventListener('click', applyHint);
   // initialize
   newGame();
 });
