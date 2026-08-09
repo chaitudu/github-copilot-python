@@ -125,3 +125,96 @@ class TestPuzzleGeneration:
         clue_count = sum(1 for row in puzzle for cell in row if cell != 0)
         
         assert clue_count == clues, f"Puzzle should have {clues} clues, got {clue_count}"
+
+
+class TestSolutionCounting:
+    """Tests for the count_solutions() function."""
+
+    def test_count_solutions_empty_board(self):
+        """Verify count_solutions returns multiple solutions for an empty board."""
+        board = sudoku_logic.create_empty_board()
+        # An empty board has thousands of solutions; we just check it's > 1
+        count = sudoku_logic.count_solutions(board, limit=2)
+        assert count >= 2, "Empty board should have multiple solutions"
+
+    def test_count_solutions_complete_board(self):
+        """Verify count_solutions returns 1 for a complete valid Sudoku."""
+        board = sudoku_logic.create_empty_board()
+        sudoku_logic.fill_board(board)
+        count = sudoku_logic.count_solutions(board, limit=2)
+        assert count == 1, "Complete valid Sudoku should have exactly 1 solution"
+
+    def test_count_solutions_early_exit(self):
+        """Verify count_solutions stops early when limit is reached."""
+        board = sudoku_logic.create_empty_board()
+        # An empty board has many solutions, but with limit=2 it should stop after finding 2
+        count = sudoku_logic.count_solutions(board, limit=2)
+        assert count == 2, "Should stop at limit when multiple solutions exist"
+
+    def test_count_solutions_unique_puzzle(self):
+        """Verify a generated puzzle has exactly 1 solution."""
+        puzzle, solution = sudoku_logic.generate_puzzle(clues=35)
+        count = sudoku_logic.count_solutions(sudoku_logic.deep_copy(puzzle), limit=2)
+        assert count == 1, f"Generated puzzle should have exactly 1 solution, got {count}"
+
+    def test_count_solutions_with_multiple_solutions(self):
+        """Verify count_solutions detects puzzles with multiple solutions.
+        
+        Construct a puzzle that has multiple solutions by removing key constraints.
+        """
+        # Start with a complete solution
+        board = sudoku_logic.create_empty_board()
+        sudoku_logic.fill_board(board)
+        
+        # Create a puzzle with only 4 clues (will have multiple solutions)
+        sparse_puzzle = sudoku_logic.create_empty_board()
+        sparse_puzzle[0][0] = board[0][0]
+        sparse_puzzle[4][4] = board[4][4]
+        sparse_puzzle[8][8] = board[8][8]
+        sparse_puzzle[3][3] = board[3][3]
+        
+        # Should have multiple solutions
+        count = sudoku_logic.count_solutions(sudoku_logic.deep_copy(sparse_puzzle), limit=2)
+        assert count >= 2, "Sparse puzzle with 4 clues should have multiple solutions"
+
+
+class TestUniquenessMilestone:
+    """Tests specifically for Milestone 2: Unique Solution Guarantee."""
+
+    def test_generated_puzzle_has_exactly_one_solution(self):
+        """Verify every generated puzzle has exactly one unique solution."""
+        for _ in range(5):  # Test multiple puzzle generations
+            puzzle, solution = sudoku_logic.generate_puzzle(clues=35)
+            puzzle_copy = sudoku_logic.deep_copy(puzzle)
+            count = sudoku_logic.count_solutions(puzzle_copy, limit=2)
+            assert count == 1, f"Generated puzzle must have exactly 1 solution, got {count}"
+
+    def test_generated_puzzle_solution_count_with_different_clue_counts(self):
+        """Verify uniqueness holds for different clue counts."""
+        for clues in [25, 30, 35, 40]:
+            puzzle, solution = sudoku_logic.generate_puzzle(clues=clues)
+            puzzle_copy = sudoku_logic.deep_copy(puzzle)
+            count = sudoku_logic.count_solutions(puzzle_copy, limit=2)
+            assert count == 1, f"Generated puzzle with {clues} clues must have exactly 1 solution, got {count}"
+
+    def test_generated_puzzle_preserves_solution(self):
+        """Verify the returned solution is consistent with the puzzle."""
+        puzzle, solution = sudoku_logic.generate_puzzle(clues=35)
+        
+        # Every clue in puzzle should match the solution
+        for row in range(sudoku_logic.SIZE):
+            for col in range(sudoku_logic.SIZE):
+                if puzzle[row][col] != 0:
+                    assert puzzle[row][col] == solution[row][col], \
+                        f"Puzzle clue at ({row},{col}) should match solution"
+
+    def test_count_solutions_does_not_modify_board(self):
+        """Verify count_solutions doesn't modify the input board."""
+        puzzle, _ = sudoku_logic.generate_puzzle(clues=35)
+        puzzle_copy = sudoku_logic.deep_copy(puzzle)
+        
+        # Count solutions
+        sudoku_logic.count_solutions(puzzle_copy, limit=2)
+        
+        # Board should remain unchanged
+        assert puzzle_copy == puzzle, "count_solutions should not modify the board"
