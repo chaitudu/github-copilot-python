@@ -31,7 +31,15 @@ function saveScores(scores) {
 }
 
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (m) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\' : '&#39;'}[m]));
+    return String(s).replace(/[&<>"']/g, function (m) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[m];
+    });
 }
 
 function formatTimeDisplay(sec) {
@@ -41,19 +49,48 @@ function formatTimeDisplay(sec) {
 }
 
 function renderScoreboard() {
-  const container = document.getElementById('scoreboard');
-  if (!container) return;
-  const scores = loadScores();
-  if (!scores.length) {
-    container.innerHTML = '<div class="no-scores">No scores yet.</div>';
-    return;
-  }
-  let html = '<table class="score-table"><thead><tr><th>#</th><th>Name</th><th>Time</th><th>Difficulty</th><th>Hints</th></tr></thead><tbody>';
-  scores.forEach((s, i) => {
-    html += `<tr><td>${i+1}</td><td>${escapeHtml(s.name)}</td><td>${formatTimeDisplay(s.timeSeconds)}</td><td>${escapeHtml(s.difficulty)}</td><td>${s.hints}</td></tr>`;
-  });
-  html += '</tbody></table>';
-  container.innerHTML = html;
+    const container = document.getElementById('scoreboard');
+    if (!container) return;
+
+    const scores = loadScores();
+
+    if (!scores.length) {
+        container.innerHTML = '<p class="no-scores">No scores yet.</p>';
+        return;
+    }
+
+    let html = `
+        <table class="score-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Name</th>
+                    <th>Time</th>
+                    <th>Difficulty</th>
+                    <th>Hints</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    scores.forEach((score, index) => {
+        html += `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${escapeHtml(score.name)}</td>
+                <td>${formatTimeDisplay(score.timeSeconds)}</td>
+                <td>${escapeHtml(score.difficulty)}</td>
+                <td>${score.hints}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+            </tbody>
+        </table>
+    `;
+
+    container.innerHTML = html;
 }
 
 function insertScore(score) {
