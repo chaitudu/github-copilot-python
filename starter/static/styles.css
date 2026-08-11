@@ -34,8 +34,10 @@ h1 {
 
 /* ensure cells are exact squares and never shrink */
 .sudoku-cell {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
+    flex: 0 0 42px;
+    box-sizing: border-box;
     border: 1px solid #bbb;
     text-align: center;
     font-size: 20px;
@@ -133,4 +135,226 @@ button:hover {
 .no-scores {
     color: #666;
     font-style: italic;
+}
+/* Alternating 3x3 Sudoku block colors */
+
+/* A blocks */
+.sudoku-row:nth-child(-n+3) .sudoku-cell:nth-child(-n+3),
+.sudoku-row:nth-child(-n+3) .sudoku-cell:nth-child(n+7),
+.sudoku-row:nth-child(n+4):nth-child(-n+6) .sudoku-cell:nth-child(n+4):nth-child(-n+6),
+.sudoku-row:nth-child(n+7) .sudoku-cell:nth-child(-n+3),
+.sudoku-row:nth-child(n+7) .sudoku-cell:nth-child(n+7) {
+    background: #f5f5f5;
+}
+
+/* B blocks */
+.sudoku-row:nth-child(-n+3) .sudoku-cell:nth-child(n+4):nth-child(-n+6),
+.sudoku-row:nth-child(n+4):nth-child(-n+6) .sudoku-cell:nth-child(-n+3),
+.sudoku-row:nth-child(n+4):nth-child(-n+6) .sudoku-cell:nth-child(n+7),
+.sudoku-row:nth-child(n+7) .sudoku-cell:nth-child(n+4):nth-child(-n+6) {
+    background: #e8e8e8;
+}
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
+body {
+    background: #f4f4f4;
+    color: #222;
+    transition: background 0.2s, color 0.2s;
+}
+
+/* Dark theme */
+body.dark-mode {
+    background: #121212;
+    color: #f5f5f5;
+}
+
+/* Header */
+.page-header {
+    text-align: center;
+}
+
+/* Theme button */
+#theme-toggle {
+    margin: 10px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    background: #333;
+    color: white;
+}
+
+/* Dark theme button */
+body.dark-mode #theme-toggle {
+    background: #f5f5f5;
+    color: #222;
+}
+
+/* Sudoku board */
+body.dark-mode #sudoku-board {
+    background: #1e1e1e;
+    border-color: #aaa;
+}
+
+/* Sudoku cells */
+body.dark-mode .sudoku-cell {
+    background: #2a2a2a;
+    color: #ffffff;
+    border-color: #666;
+}
+
+/* Dark mode alternating 3x3 blocks */
+body.dark-mode .sudoku-row:nth-child(-n+3) .sudoku-cell:nth-child(-n+3),
+body.dark-mode .sudoku-row:nth-child(-n+3) .sudoku-cell:nth-child(n+7),
+body.dark-mode .sudoku-row:nth-child(n+4):nth-child(-n+6) .sudoku-cell:nth-child(n+4):nth-child(-n+6),
+body.dark-mode .sudoku-row:nth-child(n+7) .sudoku-cell:nth-child(-n+3),
+body.dark-mode .sudoku-row:nth-child(n+7) .sudoku-cell:nth-child(n+7) {
+    background: #2b2b2b;
+}
+
+body.dark-mode .sudoku-row:nth-child(-n+3) .sudoku-cell:nth-child(n+4):nth-child(-n+6),
+body.dark-mode .sudoku-row:nth-child(n+4):nth-child(-n+6) .sudoku-cell:nth-child(-n+3),
+body.dark-mode .sudoku-row:nth-child(n+4):nth-child(-n+6) .sudoku-cell:nth-child(n+7),
+body.dark-mode .sudoku-row:nth-child(n+7) .sudoku-cell:nth-child(n+4):nth-child(-n+6) {
+    background: #3a3a3a;
+}
+
+/* Prefilled cells */
+body.dark-mode .sudoku-cell.prefilled {
+    background: #444;
+    color: #ffffff;
+}
+
+/* Incorrect cells */
+body.dark-mode .sudoku-cell.incorrect {
+    background: #6b3030;
+    color: #ffffff;
+}
+
+/* Scoreboard */
+body.dark-mode .score-table th,
+body.dark-mode .score-table td {
+    border-color: #555;
+}
+
+body.dark-mode .score-table th {
+    background: #333;
+}
+
+body.dark-mode .no-scores {
+    color: #bbb;
+}
+
+/* Inputs */
+body.dark-mode input,
+body.dark-mode select {
+    background: #2a2a2a;
+    color: #ffffff;
+    border: 1px solid #777;
+}
+
+/* Mobile responsive layout */
+@media (max-width: 600px) {
+
+    body {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 30px;
+    }
+
+    #sudoku-board {
+        width: min(90vw, 378px);
+        max-width: 100%;
+        padding: 4px;
+        box-sizing: border-box;
+    }
+
+    .sudoku-cell {
+        width: calc(100% / 9);
+        height: auto;
+        aspect-ratio: 1 / 1;
+        flex: 1 1 0;
+        font-size: clamp(14px, 5vw, 20px);
+    }
+
+    .controls {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin: 15px auto;
+    }
+
+    .controls button {
+        margin: 3px;
+    }
+
+    .status {
+        width: 100%;
+        margin-top: 5px;
+    }
+
+    .score-input {
+        width: 100%;
+    }
+
+    #player-name {
+        max-width: 90%;
+    }
+
+    .scoreboard-wrapper {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+}
+/* =========================================================
+   GAME STATE STYLES
+   These rules are intentionally at the end so they override
+   the 3x3 block background colors.
+   ========================================================= */
+
+/* Wrong answer after clicking Check Solution */
+.sudoku-cell.incorrect {
+    background: #ffcdd2 !important;
+    color: #b71c1c !important;
+    border-color: #e53935 !important;
+}
+
+/* Cell filled automatically by Hint */
+.sudoku-cell.hinted {
+    background: #c8e6c9 !important;
+    color: #1b5e20 !important;
+    font-weight: bold;
+    cursor: not-allowed;
+}
+
+/* Prefilled cells */
+.sudoku-cell.prefilled {
+    font-weight: bold;
+}
+
+/* Dark mode - wrong answer */
+body.dark-mode .sudoku-cell.incorrect {
+    background: #7f3030 !important;
+    color: #ffffff !important;
+    border-color: #ff6b6b !important;
+}
+
+/* Dark mode - hinted cell */
+body.dark-mode .sudoku-cell.hinted {
+    background: #285c35 !important;
+    color: #ffffff !important;
+    border-color: #66bb6a !important;
+}
+
+/* Disabled hinted cells should clearly look locked */
+.sudoku-cell.hinted:disabled {
+    opacity: 1;
+    cursor: not-allowed;
 }

@@ -347,7 +347,12 @@ function checkCompletion() {
 
 // Network/flow
 async function newGame() {
-  const res = await fetch('/new');
+  // Get the difficulty selected by the user.
+  const difficultySelect = document.getElementById('difficulty');
+  const difficulty = difficultySelect ? difficultySelect.value : 'medium';
+
+  // Ask the Flask backend to generate a puzzle for that difficulty.
+  const res = await fetch(`/new?difficulty=${encodeURIComponent(difficulty)}`);
   const data = await res.json();
   puzzle = data.puzzle;
   solution = data.solution || null;
@@ -422,3 +427,41 @@ window.addEventListener('load', () => {
   renderScoreboard();
   newGame();
 });
+/* =========================================================
+   DARK MODE
+   ========================================================= */
+
+function initializeTheme() {
+    const themeButton = document.getElementById('theme-toggle');
+
+    if (!themeButton) {
+        return;
+    }
+
+    // Restore previously selected theme
+    const savedTheme = localStorage.getItem('sudoku-theme');
+
+    if (savedTheme === 'dark') {
+        document.body.classList.add('dark-mode');
+        themeButton.textContent = '☀️ Light Mode';
+    }
+
+    themeButton.addEventListener('click', () => {
+
+        document.body.classList.toggle('dark-mode');
+
+        const darkModeEnabled =
+            document.body.classList.contains('dark-mode');
+
+        if (darkModeEnabled) {
+            localStorage.setItem('sudoku-theme', 'dark');
+            themeButton.textContent = '☀️ Light Mode';
+        } else {
+            localStorage.setItem('sudoku-theme', 'light');
+            themeButton.textContent = '🌙 Dark Mode';
+        }
+    });
+}
+
+// Initialize theme after page loads
+document.addEventListener('DOMContentLoaded', initializeTheme);
